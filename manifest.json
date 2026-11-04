@@ -1,0 +1,17 @@
+{
+  "name": "Math Mochi Pets",
+  "short_name": "MochiPets",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF0F5",
+  "theme_color": "#FF6584",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/512/dog-bone.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
