@@ -2,7 +2,7 @@
   "id": "/math-mochi-pets/",
   "name": "Math Mochi Pets",
   "short_name": "MochiPets",
-  "description": "Un adorable juego educativo donde el calamar misterioso de color morado lila te enseña matemáticas de forma divertida.",
+  "description": "Un divertido juego educativo interactivo diseñado para practicar operaciones matemáticas y resolver retos numéricos de forma ágil y entretenida.", 
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
