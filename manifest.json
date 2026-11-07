@@ -6,11 +6,28 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#7c3aed",
   "lang": "es",
   "dir": "ltr",
+  "prefer_related_applications": false,
+   "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.mathmochipets.app",
+      "id": "com.mathmochipets.app"
+    }
+  ],
+  "categories": [
+    "games",
+    "education"
+  ],
+  "iarc_rating_id": "",
   "screenshots": [
   {
     "src": "screenshot1.png",
