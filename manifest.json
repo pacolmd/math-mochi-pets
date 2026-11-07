@@ -28,13 +28,14 @@
     "education"
   ],
   "iarc_rating_id": "",
-  "screenshots": [
-  {
-    "src": "screenshot1.png",
-    "sizes": "970x1920",
-    "type": "image/png"
-  }
-  ],  
+   "scope_extensions": [
+    {
+      "origin": "https://github.com"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "icon-512.png",
