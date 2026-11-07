@@ -132,7 +132,16 @@
   </style>
 </head>
 <body id="gameBody" class="theme-fresa bg-kawaii-pattern min-h-screen text-slate-700 flex flex-col justify-between relative">
-
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => console.log('Service Worker registrado con éxito:', reg.scope))
+        .catch((err) => console.log('Error al registrar el Service Worker:', err));
+    });
+  }
+</script>
+  
   <!-- CAPA DE DESTELLO VISUAL (Puro feedback visual con pointer-events: none) -->
   <div id="flashOverlay" class="feedback-layer fixed inset-0 z-40 bg-transparent"></div>
 
