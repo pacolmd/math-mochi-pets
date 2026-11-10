@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Math Mochi Pets ✨</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Fredoka, Grandstander, Quicksand -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Grandstander:wght@600;700;800;900&family=Quicksand:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      font-family: 'Quicksand', sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-cute {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+    .font-pet-name {
+      font-family: 'Grandstander', cursive, sans-serif;
+    }
+    button {
+      cursor: pointer !important;
+      touch-action: manipulation;
+    }
+
+    /* Temas Dinámicos Kawaii */
+    .theme-fresa { --bg-base: #fff2f6; --bg-dot: #ffd1dc; }
+    .theme-menta { --bg-base: #f0fdf9; --bg-dot: #bbf7d0; }
+    .theme-lavanda { --bg-base: #fbf7ff; --bg-dot: #e9d5ff; }
+    .theme-melocoton { --bg-base: #fff8f0; --bg-dot: #fed7aa; }
+    .theme-noche { --bg-base: #1e1b4b; --bg-dot: #312e81; color: #f1f5f9; }
+
+    .bg-kawaii-pattern {
+      background-color: var(--bg-base, #fff2f6);
+      background-image: 
+        radial-gradient(var(--bg-dot, #ffd1dc) 2px, transparent 2px),
+        radial-gradient(var(--bg-dot, #ffd1dc) 2px, var(--bg-base, #fff2f6) 2px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+    }
+
+    .card-touch { transition: transform 0.1s ease, box-shadow 0.1s ease; }
+    .card-touch:active { transform: scale(0.96); }
+    .feedback-layer { pointer-events: none !important; transition: background-color 0.25s ease-out; }
+
+    @keyframes pulseSoft {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(1.15); }
+    }
+    .pulse-danger { animation: pulseSoft 0.8s infinite ease-in-out; }
+
+    @keyframes toastDrop {
+      0% { opacity: 0; transform: translate(-50%, -24px) scale(0.85); }
+      20% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+      80% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -24px) scale(0.9); }
+    }
+    .level-toast { animation: toastDrop 2.2s forwards cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+
+    @keyframes starRise {
+      0% { opacity: 0; transform: translateY(6px) scale(0.8); }
+      25% { opacity: 1; transform: translateY(-8px) scale(1.15); }
+      100% { opacity: 0; transform: translateY(-38px) scale(0.9); }
+    }
+    .star-float { animation: starRise 0.85s forwards ease-out; pointer-events: none !important; }
+
+    @keyframes auraPulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+      50% { box-shadow: 0 0 22px rgba(245, 158, 11, 0.65); }
+    }
+    .golden-aura { animation: auraPulse 1.8s infinite ease-in-out; }
+
+    .modal-backdrop { display: none; pointer-events: none; }
+    .modal-backdrop.is-open { display: flex !important; pointer-events: auto !important; }
+  </style>
+</head>
+<body id="gameBody" class="theme-fresa bg-kawaii-pattern min-h-screen text-slate-700 flex flex-col justify-between relative">
+
+  <!-- CAPA DE DESTELLO VISUAL -->
+  <div id="flashOverlay" class="feedback-layer fixed inset-0 z-40 bg-transparent"></div>
+
+  <!-- BOTÓN DE AUDIO -->
+  <div class="fixed top-3 right-3 z-30">
+    <button id="btnSoundToggle" aria-label="Alternar Sonido" class="bg-white/95 backdrop-blur-md border-2 border-pink-200 text-pink-500 w-11 h-11 rounded-2xl shadow-sm flex items-center justify-center text-xl active:scale-90 transition">
+      <span id="soundIcon">🔔</span>
+    </button>
+  </div>
+
+  <!-- TOAST LEVEL UP -->
+  <div id="toastLevelUp" class="fixed top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none hidden w-11/12 max-w-xs">
+    <div class="bg-white/95 backdrop-blur-md border-3 border-amber-300 rounded-3xl p-3 shadow-xl flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-2xl">🎉</div>
+      <div class="text-left">
+        <div class="text-[10px] uppercase font-bold text-amber-500">¡Nivel Superado!</div>
+        <div id="toastLevelText" class="text-lg font-black font-cute text-slate-800 leading-none">Nivel 2</div>
+      </div>
+      <span class="ml-auto text-xs font-black font-cute bg-amber-400 text-white px-2.5 py-1 rounded-xl shadow-xs">+Dificultad</span>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 1. PANTALLA PRINCIPAL (MENÚ)                                   -->
+  <!-- ============================================================== -->
+  <main id="screenMenu" class="relative z-10 flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-md mx-auto w-full text-center">
+    
+    <!-- Contador Global de Estrellas y Sincronización Online -->
+    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/90 border-2 border-amber-200 shadow-sm mb-3">
+      <span class="text-xl">⭐</span>
+      <span class="text-xs uppercase font-extrabold text-slate-400">Estrellas:</span>
+      <span id="menuTotalStars" class="text-lg font-black font-cute text-amber-500">0</span>
+      <button id="btnOpenBank" class="ml-1 text-[11px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg hover:bg-amber-200 transition">
+        + Packs
+      </button>
+      <span id="cloudStatusIcon" title="Sincronizado con la nube" class="ml-1 text-xs">☁️</span>
+    </div>
+
+    <!-- Título Principal & Cita -->
+    <div class="mb-3 w-full">
+      <div class="flex items-center justify-center gap-2 mb-1">
+        <span class="text-3xl">🐶</span>
+        <h1 class="text-3xl sm:text-4xl font-black font-cute text-pink-500 tracking-wide drop-shadow-sm">
+          Math Mochi <span class="text-sky-400">Pets!</span>
+        </h1>
+        <span class="text-3xl">🐱</span>
+      </div>
+      <div class="bg-white/85 border border-pink-200 rounded-2xl px-4 py-2 mt-2 shadow-xs min-h-[46px] flex items-center justify-center">
+        <p id="cuteMathQuote" class="text-xs sm:text-sm font-bold text-pink-600 leading-snug italic">
+          "¡1 + 1 = Tu amor por las matemáticas! 🐾"
+        </p>
+      </div>
+    </div>
+
+    <!-- Acciones del Menú -->
+    <div class="w-full space-y-2.5 mt-2">
+      <button id="btnPlay" class="w-full py-4 px-6 bg-gradient-to-r from-pink-400 via-rose-400 to-amber-300 active:scale-98 text-white font-black font-cute text-xl rounded-2xl shadow-md border-b-4 border-pink-600 transition flex items-center justify-center gap-2">
+        <span>💖 ¡Elegir Mundo y Jugar!</span>
+      </button>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <button id="btnOpenStreaks" class="py-3 px-3 bg-white hover:bg-pink-50 active:scale-98 text-rose-500 font-bold font-cute text-sm rounded-2xl border-2 border-pink-200 shadow-xs flex items-center justify-center gap-1.5 transition">
+          <span>📅</span> Rachas
+          <span id="badgeStreakDays" class="bg-rose-100 text-rose-600 text-[10px] font-black px-1.5 py-0.5 rounded-md">1d</span>
+        </button>
+
+        <button id="btnOpenQuests" class="py-3 px-3 bg-white hover:bg-sky-50 active:scale-98 text-sky-500 font-bold font-cute text-sm rounded-2xl border-2 border-sky-200 shadow-xs flex items-center justify-center gap-1.5 transition">
+          <span>🎯</span> Retos
+          <span id="badgeQuestsPending" class="bg-sky-100 text-sky-600 text-[10px] font-black px-1.5 py-0.5 rounded-md">0</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <button id="btnOpenShop" class="py-3 px-3 bg-white hover:bg-amber-50 active:scale-98 text-amber-600 font-bold font-cute text-sm rounded-2xl border-2 border-amber-200 shadow-xs flex items-center justify-center gap-1.5 transition">
+          <span>🛍️</span> Tienda
+        </button>
+
+        <button id="btnOpenHighscores" class="py-3 px-3 bg-white hover:bg-purple-50 active:scale-98 text-purple-600 font-bold font-cute text-sm rounded-2xl border-2 border-purple-200 shadow-xs flex items-center justify-center gap-1.5 transition">
+          <span>🏆</span> Récords
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- 2. PANTALLA DE JUEGO                                           -->
+  <!-- ============================================================== -->
+  <main id="screenGame" class="hidden relative z-10 flex-1 flex flex-col justify-between max-w-md mx-auto w-full p-4 transition-all">
+    
+    <!-- HUD superior -->
+    <header class="w-full bg-white/95 backdrop-blur-md border-2 border-pink-200 rounded-3xl p-3 shadow-sm">
+      <div class="flex items-center justify-between text-center">
+        <div class="flex items-center gap-1.5 text-left">
+          <div id="hudWorldIcon" class="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-lg">🌍</div>
+          <div>
+            <div id="hudWorldName" class="text-[9px] uppercase font-bold text-slate-400 truncate max-w-[80px]">Mundo 1</div>
+            <div id="hudLevel" class="text-base font-black font-cute text-amber-500 leading-tight">Lvl 1/100</div>
+          </div>
+        </div>
+
+        <div class="relative">
+          <div class="text-[9px] uppercase font-bold text-slate-400">Puntos</div>
+          <div id="hudScore" class="text-xl font-black font-cute text-pink-500 leading-tight">0</div>
+          <div id="floatPointBox" class="absolute left-1/2 -translate-x-1/2 -top-5 pointer-events-none w-32"></div>
+        </div>
+
+        <div class="flex items-center gap-1.5 text-right">
+          <div>
+            <div class="text-[9px] uppercase font-bold text-slate-400">⭐ Partida</div>
+            <div id="hudMatchStars" class="text-base font-black font-cute text-amber-500 leading-tight">0</div>
+          </div>
+          <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-lg">⭐</div>
+        </div>
+      </div>
+
+      <!-- Barra de Energía -->
+      <div class="mt-2.5">
+        <div class="w-full bg-pink-100 rounded-full h-3.5 p-0.5 border border-pink-200 overflow-hidden relative shadow-inner">
+          <div id="hudEnergyBar" class="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 rounded-full transition-all duration-75 ease-linear" style="width: 100%;"></div>
+        </div>
+        <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 px-1 mt-1">
+          <span id="hudComboText" class="text-pink-500 font-extrabold">Combo: 0</span>
+          <span class="text-amber-500 font-extrabold">¡100 Niveles por Mundo!</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Pregunta -->
+    <div id="questionContainer" class="my-3 text-center bg-white/90 border-2 border-pink-200 rounded-2xl p-2.5 shadow-xs transition-all">
+      <div id="starRewardBadge" class="hidden inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-700 text-[11px] font-bold mb-1 animate-pulse">
+        <span>⭐</span> ¡Pregunta Especial: +1 Estrella! <span>⭐</span>
+      </div>
+      <h2 id="hudQuestionText" class="text-xl sm:text-2xl font-black font-cute text-slate-800 leading-snug px-1">
+        ¿Cuál es el MAYOR?
+      </h2>
+      <div class="text-[11px] font-bold text-slate-400 mt-0.5">
+        Sección: <span id="hudRangeLabel" class="text-pink-500 font-bold">Operaciones Básicas</span>
+      </div>
+    </div>
+
+    <!-- Opciones de Mascotas -->
+    <div class="grid grid-cols-2 gap-3.5 my-auto w-full">
+      <button id="btnOptionLeft" class="card-touch group relative overflow-hidden bg-white border-3 border-pink-200 rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center shadow-md active:scale-95 transition">
+        <div id="petAvatarLeft" class="w-16 h-16 sm:w-20 sm:h-20 mb-2 flex items-center justify-center"></div>
+        <div id="petNameLeft" class="font-pet-name text-base sm:text-lg font-black text-pink-500 tracking-wide mb-1 leading-tight drop-shadow-xs">Mochi Pup</div>
+        <span id="labelOptionLeft" class="text-3xl sm:text-4xl font-black font-cute text-slate-800 tracking-tight">0</span>
+      </button>
+
+      <button id="btnOptionRight" class="card-touch group relative overflow-hidden bg-white border-3 border-sky-200 rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center shadow-md active:scale-95 transition">
+        <div id="petAvatarRight" class="w-16 h-16 sm:w-20 sm:h-20 mb-2 flex items-center justify-center"></div>
+        <div id="petNameRight" class="font-pet-name text-base sm:text-lg font-black text-sky-500 tracking-wide mb-1 leading-tight drop-shadow-xs">Mimi Kitty</div>
+        <span id="labelOptionRight" class="text-3xl sm:text-4xl font-black font-cute text-slate-800 tracking-tight">0</span>
+      </button>
+    </div>
+
+    <!-- Botones de Control de Partida -->
+    <footer class="grid grid-cols-2 gap-2.5 pt-3">
+      <button id="btnPauseGame" class="w-full py-3 px-3 bg-white hover:bg-slate-50 text-slate-600 font-bold font-cute text-sm rounded-2xl border-2 border-slate-200 shadow-xs active:scale-95 transition flex items-center justify-center gap-1.5">
+        <span>⏸</span> Pausa
+      </button>
+      <button id="btnExitToHome" class="w-full py-3 px-3 bg-white hover:bg-pink-50 text-pink-500 font-bold font-cute text-sm rounded-2xl border-2 border-pink-200 shadow-xs active:scale-95 transition flex items-center justify-center gap-1.5">
+        <span>🏡</span> Menú Principal
+      </button>
+    </footer>
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- MODALES DEL JUEGO                                              -->
+  <!-- ============================================================== -->
+
+  <!-- Modal Selección de Mundos -->
+  <div id="modalWorlds" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-pink-300 rounded-3xl p-5 max-w-sm w-full text-center shadow-xl">
+      <div class="text-3xl mb-1">🌍</div>
+      <h3 class="text-xl font-black font-cute text-pink-500 mb-1">Elige tu Mundo Matemático</h3>
+      <p class="text-slate-500 text-xs font-semibold mb-4">Cada mundo tiene 100 niveles de repaso y desafío.</p>
+      
+      <div id="worldsListContainer" class="space-y-2.5 mb-4 max-h-64 overflow-y-auto pr-1 text-left"></div>
+
+      <button id="btnCloseWorlds" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold font-cute text-sm rounded-2xl transition">Volver</button>
+    </div>
+  </div>
+
+  <!-- Modal Pausa -->
+  <div id="modalPause" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-pink-200 rounded-3xl p-5 max-w-xs w-full text-center shadow-xl">
+      <div class="text-3xl mb-1">🐾</div>
+      <h3 class="text-xl font-black font-cute text-slate-800 mb-1">Partida en Pausa</h3>
+      <p class="text-slate-500 text-xs font-semibold mb-4">El tiempo está detenido.</p>
+      <div class="space-y-2">
+        <button id="btnResumeGame" class="w-full py-3 bg-pink-500 hover:bg-pink-400 text-white font-black font-cute text-base rounded-2xl transition active:scale-95">Reanudar</button>
+        <button id="btnPauseExit" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold font-cute text-sm rounded-2xl transition">Elegir Otro Mundo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Game Over -->
+  <div id="modalGameOver" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-rose-200 rounded-3xl p-5 max-w-xs w-full text-center shadow-xl">
+      <div class="text-4xl mb-1">💤</div>
+      <h3 class="text-2xl font-black font-cute text-slate-800 mb-1">¡Tiempo Agotado!</h3>
+      <p class="text-slate-500 text-xs font-semibold mb-3">Tus mascotas necesitan descansar.</p>
+
+      <div class="bg-pink-50 border border-pink-200 rounded-2xl p-3 mb-4 space-y-1.5 text-left text-xs font-bold text-slate-600">
+        <div class="flex justify-between"><span>Puntos obtenidos:</span><span id="goScore" class="font-cute text-base text-pink-500">0</span></div>
+        <div class="flex justify-between"><span>Nivel alcanzado:</span><span id="goLevel" class="font-cute text-base text-amber-500">1</span></div>
+        <div class="flex justify-between border-t border-pink-200 pt-1"><span>Estrellas ganadas:</span><span id="goStars" class="font-cute text-base text-amber-600">+0 ⭐</span></div>
+      </div>
+
+      <div class="space-y-2">
+        <button id="btnPlayAgain" class="w-full py-3 bg-pink-500 hover:bg-pink-400 text-white font-black font-cute text-base rounded-2xl transition active:scale-95">Reintentar Nivel</button>
+        <button id="btnGoHome" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold font-cute text-sm rounded-2xl transition">Selector de Mundos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Rachas -->
+  <div id="modalStreaks" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-rose-200 rounded-3xl p-5 max-w-sm w-full text-center shadow-xl">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xl font-black font-cute text-rose-500 flex items-center gap-1.5"><span>📅</span> Racha Diaria</h3>
+        <button id="btnCloseStreaks" class="text-slate-400 hover:text-rose-500 font-bold text-lg p-1">✕</button>
+      </div>
+      <p class="text-xs text-slate-500 font-semibold mb-3">Haz check-in diario para ganar estrellas gratis.</p>
+      <div id="streakDaysGrid" class="grid grid-cols-7 gap-1.5 mb-4"></div>
+      <button id="btnClaimDaily" class="w-full py-3 bg-rose-500 hover:bg-rose-400 disabled:opacity-50 text-white font-black font-cute text-base rounded-2xl transition shadow-sm active:scale-95">Reclamar Recompensa de Hoy</button>
+    </div>
+  </div>
+
+  <!-- Modal Retos -->
+  <div id="modalQuests" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-sky-200 rounded-3xl p-5 max-w-sm w-full text-center shadow-xl">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xl font-black font-cute text-sky-500 flex items-center gap-1.5"><span>🎯</span> Retos Diarios</h3>
+        <button id="btnCloseQuests" class="text-slate-400 hover:text-sky-500 font-bold text-lg p-1">✕</button>
+      </div>
+      <p class="text-xs text-slate-500 font-semibold mb-3">Completa desafíos para conseguir estrellas adicionales.</p>
+      <div id="questsContainer" class="space-y-2 mb-4 max-h-60 overflow-y-auto pr-1"></div>
+      <button id="btnOkQuests" class="w-full py-2.5 bg-sky-500 hover:bg-sky-400 text-white font-black font-cute text-sm rounded-2xl transition">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Modal Tienda -->
+  <div id="modalShop" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-amber-200 rounded-3xl p-5 max-w-md w-full text-center shadow-xl">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🛍️</span>
+          <h3 class="text-xl font-black font-cute text-amber-500">Tienda Mochi</h3>
+        </div>
+        <div class="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl">
+          <span class="text-xs">⭐</span>
+          <span id="shopStarBalance" class="text-sm font-black font-cute text-amber-600">0</span>
+        </div>
+        <button id="btnCloseShop" class="text-slate-400 hover:text-amber-500 font-bold text-lg p-1">✕</button>
+      </div>
+
+      <div class="flex border-b border-slate-200 mb-3 text-xs font-bold">
+        <button id="tabPets" class="flex-1 py-2 border-b-2 border-amber-500 text-amber-600">Mascotas</button>
+        <button id="tabSeasonal" class="flex-1 py-2 text-slate-400 hover:text-slate-600 relative"><span>🍂 Otoño/Spooky</span></button>
+        <button id="tabThemes" class="flex-1 py-2 text-slate-400 hover:text-slate-600">Paletas</button>
+        <button id="tabPacks" class="flex-1 py-2 text-slate-400 hover:text-slate-600">⭐ Tienda</button>
+      </div>
+
+      <div id="panelPets" class="grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto p-1"></div>
+      <div id="panelSeasonal" class="hidden grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto p-1"></div>
+      <div id="panelThemes" class="hidden grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto p-1"></div>
+      <div id="panelPacks" class="hidden space-y-2.5 max-h-64 overflow-y-auto p-1">
+        <div class="border-2 border-amber-200 rounded-2xl p-3 bg-amber-50/50 flex items-center justify-between text-left">
+          <div><div class="text-sm font-black font-cute text-amber-600">Pack Golosina ⭐ 120</div><div class="text-[11px] text-slate-500">Ideal para skins básicas</div></div>
+          <button id="btnBuyPack100" class="bg-amber-400 hover:bg-amber-300 text-white font-black font-cute text-xs px-3 py-2 rounded-xl shadow-xs">0,99 €</button>
+        </div>
+        <div class="border-2 border-pink-200 rounded-2xl p-3 bg-pink-50/50 flex items-center justify-between text-left">
+          <div><div class="text-sm font-black font-cute text-pink-600">Pack Dulce ⭐ 350</div><div class="text-[11px] text-slate-500">¡Ideal para skins raras!</div></div>
+          <button id="btnBuyPack300" class="bg-pink-500 hover:bg-pink-400 text-white font-black font-cute text-xs px-3 py-2 rounded-xl shadow-xs">2,49 €</button>
+        </div>
+        <div class="border-2 border-purple-200 rounded-2xl p-3 bg-purple-50/50 flex items-center justify-between text-left">
+          <div><div class="text-sm font-black font-cute text-purple-600">Pack Rey Mochi ⭐ 1000</div><div class="text-[11px] text-slate-500">¡Acceso directo a coleccionables!</div></div>
+          <button id="btnBuyPack1000" class="bg-purple-500 hover:bg-purple-400 text-white font-black font-cute text-xs px-3 py-2 rounded-xl shadow-xs">5,99 €</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Checkout -->
+  <div id="modalCheckout" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-emerald-200 rounded-3xl p-5 max-w-xs w-full text-center shadow-xl">
+      <div class="text-3xl mb-1">🎁</div>
+      <h4 class="text-lg font-black font-cute text-slate-800">Conseguir Estrellas</h4>
+      <p class="text-xs text-slate-500 font-semibold mb-3">Elige tu método de pago preferido</p>
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 mb-4 text-xs font-bold text-slate-600 flex justify-between">
+        <span>Total:</span> <span id="checkoutAmountText" class="text-emerald-600 font-black font-cute text-sm">0,99 €</span>
+      </div>
+      <div class="space-y-2 mb-3">
+        <button id="btnPayGoogle" class="w-full py-2.5 px-3 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition">Google Play / Google Pay</button>
+        <button id="btnPayApple" class="w-full py-2.5 px-3 bg-neutral-800 hover:bg-black text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition">Apple Pay</button>
+        <button id="btnPayPayPal" class="w-full py-2.5 px-3 bg-[#0070ba] hover:bg-[#005ea6] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition">PayPal Rápida</button>
+      </div>
+      <button id="btnCancelCheckout" class="text-xs text-slate-400 hover:text-slate-600 font-bold">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Récords -->
+  <div id="modalHighscores" class="modal-backdrop fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white border-3 border-purple-200 rounded-3xl p-5 max-w-xs w-full text-center shadow-xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xl font-black font-cute text-purple-600">🏆 Récords</h3>
+        <button id="btnCloseScores" class="text-slate-400 font-bold text-lg">✕</button>
+      </div>
+      <div id="scoresList" class="space-y-2 mb-4 max-h-56 overflow-y-auto"></div>
+      <button id="btnOkScores" class="w-full py-2.5 bg-purple-500 text-white font-black font-cute rounded-2xl">Aceptar</button>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- SCRIPT INTEGRADO Y ROBUSTO                                     -->
+  <!-- ============================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Configuración Firebase del usuario
+    const firebaseConfig = {
+      apiKey: "AIzaSyDNMTQswroFmdjxxF3__3_wWh1pQh87m3k",
+      authDomain: "math-mochi-pets.firebaseapp.com",
+      projectId: "math-mochi-pets",
+      storageBucket: "math-mochi-pets.firebasestorage.app",
+      messagingSenderId: "1094138765727",
+      appId: "1:1094138765727:web:ad15adb44012c75a071daa",
+      measurementId: "G-WKJKTHL0XT"
+    };
+
+    let db = null;
+    try {
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+    } catch(e) {
+      console.warn("Firebase no inicializado:", e);
+    }
+
+    // Identificador único de usuario local persistente
+    function obtenerIdJugador() {
+      let userId = localStorage.getItem('mochi_user_id');
+      if (!userId) {
+        userId = 'user_' + crypto.randomUUID();
+        localStorage.setItem('mochi_user_id', userId);
+      }
+      return userId;
+    }
+
+    window.guardarPartidaOnline = async function(data) {
+      if (!db) return;
+      const userId = obtenerIdJugador();
+      try {
+        await setDoc(doc(db, "partidas", userId), {
+          ...data,
+          ultimaActualizacion: new Date().toISOString()
+        }, { merge: true });
+        const icon = document.getElementById('cloudStatusIcon');
+        if (icon) icon.textContent = "☁️✅";
+      } catch (e) {
+        const icon = document.getElementById('cloudStatusIcon');
+        if (icon) icon.textContent = "☁️⚠️";
+      }
+    };
+
+    window.cargarPartidaOnline = async function() {
+      if (!db) return null;
+      const userId = obtenerIdJugador();
+      try {
+        const docRef = doc(db, "partidas", userId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const icon = document.getElementById('cloudStatusIcon');
+          if (icon) icon.textContent = "☁️✅";
+          return docSnap.data();
+        }
+      } catch (e) {}
+      return null;
+    };
+  </script>
+
+  <script>
+    // Motor de Sonido Web Audio API
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.bgMusicTimer = null;
+        this.noteIndex = 0;
+      }
+      init() {
+        if (!this.ctx) {
+          try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) this.ctx = new AudioContext();
+          } catch (e) {}
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      }
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.muted) this.stopMusic();
+        return this.muted;
+      }
+      playSuccess() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx || this.ctx.state !== 'running') return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.exponentialRampToValueAtTime(880.00, now + 0.15);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(now); osc.stop(now + 0.25);
+        } catch (e) {}
+      }
+      playError() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx || this.ctx.state !== 'running') return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.linearRampToValueAtTime(140, now + 0.25);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(now); osc.stop(now + 0.3);
+        } catch (e) {}
+      }
+      playStarChime() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx || this.ctx.state !== 'running') return;
+        try {
+          const now = this.ctx.currentTime;
+          [1046.5, 1318.5, 1567.98].forEach((f, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.frequency.setValueAtTime(f, now + idx * 0.06);
+            gain.gain.setValueAtTime(0.15, now + idx * 0.06);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.28);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.06); osc.stop(now + idx * 0.06 + 0.3);
+          });
+        } catch (e) {}
+      }
+      playLevelUp() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx || this.ctx.state !== 'running') return;
+        try {
+          const now = this.ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.32);
+          });
+        } catch (e) {}
+      }
+      startMusic(level = 1) {
+        this.stopMusic();
+        if (this.muted) return;
+        const roots = [261.63, 293.66, 329.63, 349.23];
+        const root = roots[(level - 1) % roots.length];
+        const intervals = [1, 1.25, 1.5, 1.667];
+        const speed = Math.max(280, 420 - (level * 15));
+
+        this.bgMusicTimer = setInterval(() => {
+          if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+          try {
+            const freq = root * intervals[this.noteIndex % intervals.length];
+            this.noteIndex++;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.28);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+          } catch(e) {}
+        }, speed);
+      }
+      stopMusic() {
+        if (this.bgMusicTimer) {
+          clearInterval(this.bgMusicTimer);
+          this.bgMusicTimer = null;
+        }
+      }
+    }
+
+    // Generador Matemático por 3 Mundos y 100 Niveles
+    class MathGenerator {
+      static isPrime(n) {
+        if (n <= 1) return false;
+        if (n <= 3) return true;
+        if (n % 2 === 0 || n % 3 === 0) return false;
+        for (let i = 5; i * i <= n; i += 6) {
+          if (n % i === 0 || n % (i + 2) === 0) return false;
+        }
+        return true;
+      }
+      static rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+      static getChallenge(worldId, level) {
+        const diff = Math.min(10, Math.floor((level - 1) / 10) + 1);
+        if (worldId === 'world2') return this.getWorld2Challenge(diff);
+        if (worldId === 'world3') return this.getWorld3Challenge(diff);
+        return this.getWorld1Challenge(diff);
+      }
+
+      static getWorld1Challenge(diff) {
+        const ops = ['+', '-', '×', '÷'];
+        const op = ops[Math.floor(Math.random() * ops.length)];
+        let target, a, b, text;
+        if (op === '+') { a = this.rand(5*diff, 25*diff); b = this.rand(5*diff, 25*diff); target = a + b; text = `¿Cuánto es ${a} + ${b}?`; }
+        else if (op === '-') { a = this.rand(10*diff, 40*diff); b = this.rand(1, a); target = a - b; text = `¿Cuánto es ${a} - ${b}?`; }
+        else if (op === '×') { a = this.rand(2, 5+diff); b = this.rand(2, 12); target = a * b; text = `¿Cuánto es ${a} × ${b}?`; }
+        else { b = this.rand(2, 10); target = this.rand(2, 12); a = b * target; text = `¿Cuánto es ${a} ÷ ${b}?`; }
+
+        const isLeft = Math.random() > 0.5;
+        return {
+          text,
+          a: isLeft ? target : target + this.rand(1, 6),
+          b: isLeft ? target + this.rand(1, 6) : target,
+          correct: isLeft ? 'left' : 'right',
+          rangeLabel: "Mundo 1: Operaciones Relámpago",
+          isSpecialStarQuestion: Math.random() < 0.25
+        };
+      }
+
+      static getWorld2Challenge(diff) {
+        const range = 50 + diff * 30;
+        const types = ['mayor', 'menor', 'primo', 'mult3'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        let a, b, text, correct = 'left';
+        if (type === 'mayor') { text = "¿Cuál es el MAYOR?"; a = this.rand(-range, range); do { b = this.rand(-range, range); } while(b===a); correct = a > b ? 'left' : 'right'; }
+        else if (type === 'menor') { text = "¿Cuál es el MENOR?"; a = this.rand(-range, range); do { b = this.rand(-range, range); } while(b===a); correct = a < b ? 'left' : 'right'; }
+        else if (type === 'primo') { text = "¿Cuál es número PRIMO?"; const primes = [2,3,5,7,11,13,17,19,23,29,31,37]; a = primes[Math.floor(Math.random()*primes.length)]; b = this.rand(4,50); while(this.isPrime(b)) b = this.rand(4,50); correct = Math.random()>0.5?'left':'right'; if(correct==='right') {const t=a; a=b; b=t;} }
+        else { text = "¿Cuál es múltiplo de 3?"; a = this.rand(1,20)*3; b = this.rand(1,50); while(b%3===0)b++; correct = Math.random()>0.5?'left':'right'; if(correct==='right') {const t=a; a=b; b=t;} }
+        return { text, a, b, correct, rangeLabel: "Mundo 2: Números y Propiedades", isSpecialStarQuestion: Math.random() < 0.25 };
+      }
+
+      static getWorld3Challenge(diff) {
+        let x = this.rand(-10, 10), y = this.rand(-10, 10);
+        if(x===0) x=2; if(y===0) y=-3;
+        const quad = x > 0 && y > 0 ? 1 : (x < 0 && y > 0 ? 2 : (x < 0 && y < 0 ? 3 : 4));
+        const text = `¿En qué Cuadrante está (${x}, ${y})?`;
+        const wrongQuad = (quad % 4) + 1;
+        const isLeft = Math.random() > 0.5;
+        return {
+          text,
+          a: isLeft ? `Cuadrante ${quad}` : `Cuadrante ${wrongQuad}`,
+          b: isLeft ? `Cuadrante ${wrongQuad}` : `Cuadrante ${quad}`,
+          correct: isLeft ? 'left' : 'right',
+          rangeLabel: "Mundo 3: Plano Cartesiano",
+          isSpecialStarQuestion: Math.random() < 0.25
+        };
+      }
+    }
+
+    // Catálogo de Mascotas incluyendo el Calamar Misterioso en morado lila
+    const PET_CATALOG = [
+      { id: 'mochipup', name: 'Mochi Pup', price: 0, icon: '🐶', side: 'left', seasonal: false },
+      { id: 'calamarmisterioso', name: 'Calamar Misterioso', price: 300, icon: '🦑', side: 'left', seasonal: false, badge: 'Morado Lila 💜' },
+      { id: 'mimikitty', name: 'Mimi Kitty', price: 0, icon: '🐱', side: 'right', seasonal: false }
+    ];
+
+    const THEME_CATALOG = [
+      { id: 'theme-fresa', name: 'Fresa Pastel', price: 0, color: '#f43f5e' },
+      { id: 'theme-menta', name: 'Menta Suave', price: 40, color: '#10b981' },
+      { id: 'theme-lavanda', name: 'Lavanda Dulce', price: 75, color: '#a855f7' },
+      { id: 'theme-melocoton', name: 'Melocotón', price: 110, color: '#f97316' },
+      { id: 'theme-noche', name: 'Noche Mochi', price: 200, color: '#4f46e5' }
+    ];
+
+    const WORLDS_CONFIG = [
+      { id: 'world1', name: 'Mundo 1: Operaciones Relámpago', icon: '⚡', desc: 'Suma, resta, multiplicación y división rápida.' },
+      { id: 'world2', name: 'Mundo 2: Números y Propiedades', icon: '🚀', desc: 'Mayor, menor, primos y múltiplos.' },
+      { id: 'world3', name: 'Mundo 3: Plano Cartesiano', icon: '🗺️', desc: 'Coordenadas (x, y) y cuadrantes.' }
+    ];
+
+    const CUTE_QUOTES = [
+      "¡1 + 1 = Tu amor por las matemáticas! 🐾",
+      "¡Eres tan positivo como el valor absoluto! ✨",
+      "¡Tus reflejos son más rápidos que la luz! 🌟",
+      "¡Conquistando los 100 niveles paso a paso! 🌸",
+      "¡Mascotas felices, mentes brillantes! 🐶🐱"
+    ];
+
+    // Clase Principal del Juego
+    class MochiPetsGame {
+      constructor() {
+        this.sound = new SoundEngine();
+        this.totalStars = 0;
+        this.unlockedPets = ['mochipup', 'mimikitty', 'calamarmisterioso'];
+        this.unlockedThemes = ['theme-fresa'];
+        this.activePetLeft = 'mochipup';
+        this.activePetRight = 'mimikitty';
+        this.activeTheme = 'theme-fresa';
+
+        this.worldProgress = {
+          world1: { level: 1, score: 0 },
+          world2: { level: 1, score: 0 },
+          world3: { level: 1, score: 0 }
+        };
+        this.activeWorld = 'world1';
+
+        this.streakDays = 1;
+        this.lastClaimDate = null;
+        this.quests = [
+          { id: 'q1', text: 'Acierta 10 operaciones', progress: 0, goal: 10, reward: 5, claimed: false },
+          { id: 'q2', text: 'Consigue una racha de 5', progress: 0, goal: 5, reward: 10, claimed: false },
+          { id: 'q3', text: 'Llega al Nivel 5', progress: 1, goal: 5, reward: 15, claimed: false }
+        ];
+
+        this.score = 0;
+        this.level = 1;
+        this.energy = 100;
+        this.matchStars = 0;
+        this.combo = 0;
+        this.isPaused = false;
+        this.currentChallenge = null;
+        this.animLoopId = null;
+        this.lastTime = null;
+        this.checkoutData = null;
+
+        this.initStorage();
+        this.cacheDOM();
+        this.bindEvents();
+        this.applyTheme(this.activeTheme);
+        this.refreshHomeStats();
+        this.syncCloudLoad();
+      }
+
+      async syncCloudLoad() {
+        if (typeof window.cargarPartidaOnline === 'function') {
+          const cloudData = await window.cargarPartidaOnline();
+          if (cloudData) {
+            if (cloudData.totalStars && cloudData.totalStars > this.totalStars) {
+              this.totalStars = cloudData.totalStars;
+            }
+            if (cloudData.worldProgress) {
+              this.worldProgress = cloudData.worldProgress;
+            }
+            this.saveStorage();
+            this.refreshHomeStats();
+          }
+        }
+      }
+
+      triggerCloudSave() {
+        if (typeof window.guardarPartidaOnline === 'function') {
+          window.guardarPartidaOnline({
+            totalStars: this.totalStars,
+            worldProgress: this.worldProgress
+          });
+        }
+      }
+
+      initStorage() {
+        try {
+          this.totalStars = parseInt(localStorage.getItem('mmp_stars') || '0', 10);
+          this.unlockedPets = JSON.parse(localStorage.getItem('mmp_unlocked_pets') || '["mochipup","mimikitty","calamarmisterioso"]');
+          this.unlockedThemes = JSON.parse(localStorage.getItem('mmp_unlocked_themes') || '["theme-fresa"]');
+          this.activePetLeft = localStorage.getItem('mmp_pet_l') || 'mochipup';
+          this.activePetRight = localStorage.getItem('mmp_pet_r') || 'mimikitty';
+          this.activeTheme = localStorage.getItem('mmp_theme') || 'theme-fresa';
+          this.streakDays = parseInt(localStorage.getItem('mmp_streak_days') || '1', 10);
+          this.lastClaimDate = localStorage.getItem('mmp_streak_last_date') || null;
+
+          const wp = localStorage.getItem('mmp_world_progress');
+          if (wp) this.worldProgress = JSON.parse(wp);
+
+          const q = localStorage.getItem('mmp_quests');
+          if (q) this.quests = JSON.parse(q);
+        } catch(e) {}
+      }
+
+      saveStorage() {
+        try {
+          localStorage.setItem('mmp_stars', this.totalStars);
+          localStorage.setItem('mmp_unlocked_pets', JSON.stringify(this.unlockedPets));
+          localStorage.setItem('mmp_unlocked_themes', JSON.stringify(this.unlockedThemes));
+          localStorage.setItem('mmp_pet_l', this.activePetLeft);
+          localStorage.setItem('mmp_pet_r', this.activePetRight);
+          localStorage.setItem('mmp_theme', this.activeTheme);
+          localStorage.setItem('mmp_streak_days', this.streakDays);
+          if (this.lastClaimDate) localStorage.setItem('mmp_streak_last_date', this.lastClaimDate);
+          localStorage.setItem('mmp_world_progress', JSON.stringify(this.worldProgress));
+          localStorage.setItem('mmp_quests', JSON.stringify(this.quests));
+          this.triggerCloudSave();
+        } catch(e) {}
+      }
+
+      cacheDOM() {
+        this.dom = {
+          gameBody: document.getElementById('gameBody'),
+          flashOverlay: document.getElementById('flashOverlay'),
+          soundToggle: document.getElementById('btnSoundToggle'),
+          soundIcon: document.getElementById('soundIcon'),
+          screenMenu: document.getElementById('screenMenu'),
+          screenGame: document.getElementById('screenGame'),
+          menuTotalStars: document.getElementById('menuTotalStars'),
+          cuteMathQuote: document.getElementById('cuteMathQuote'),
+          btnPlay: document.getElementById('btnPlay'),
+          badgeStreakDays: document.getElementById('badgeStreakDays'),
+          badgeQuestsPending: document.getElementById('badgeQuestsPending'),
+          btnOpenBank: document.getElementById('btnOpenBank'),
+
+          hudWorldIcon: document.getElementById('hudWorldIcon'),
+          hudWorldName: document.getElementById('hudWorldName'),
+          hudLevel: document.getElementById('hudLevel'),
+          hudScore: document.getElementById('hudScore'),
+          hudMatchStars: document.getElementById('hudMatchStars'),
+          hudEnergyBar: document.getElementById('hudEnergyBar'),
+          hudComboText: document.getElementById('hudComboText'),
+          hudQuestionText: document.getElementById('hudQuestionText'),
+          hudRangeLabel: document.getElementById('hudRangeLabel'),
+          questionContainer: document.getElementById('questionContainer'),
+          starRewardBadge: document.getElementById('starRewardBadge'),
+          btnOptionLeft: document.getElementById('btnOptionLeft'),
+          btnOptionRight: document.getElementById('btnOptionRight'),
+          labelOptionLeft: document.getElementById('labelOptionLeft'),
+          labelOptionRight: document.getElementById('labelOptionRight'),
+          petAvatarLeft: document.getElementById('petAvatarLeft'),
+          petAvatarRight: document.getElementById('petAvatarRight'),
+          petNameLeft: document.getElementById('petNameLeft'),
+          petNameRight: document.getElementById('petNameRight'),
+          btnPauseGame: document.getElementById('btnPauseGame'),
+          btnExitToHome: document.getElementById('btnExitToHome'),
+          toastLevelUp: document.getElementById('toastLevelUp'),
+          toastLevelText: document.getElementById('toastLevelText'),
+          floatPointBox: document.getElementById('floatPointBox'),
+
+          modalWorlds: document.getElementById('modalWorlds'),
+          worldsListContainer: document.getElementById('worldsListContainer'),
+          btnCloseWorlds: document.getElementById('btnCloseWorlds'),
+
+          modalPause: document.getElementById('modalPause'),
+          btnResumeGame: document.getElementById('btnResumeGame'),
+          btnPauseExit: document.getElementById('btnPauseExit'),
+
+          modalGameOver: document.getElementById('modalGameOver'),
+          goScore: document.getElementById('goScore'),
+          goLevel: document.getElementById('goLevel'),
+          goStars: document.getElementById('goStars'),
+          btnPlayAgain: document.getElementById('btnPlayAgain'),
+          btnGoHome: document.getElementById('btnGoHome'),
+
+          modalStreaks: document.getElementById('modalStreaks'),
+          btnOpenStreaks: document.getElementById('btnOpenStreaks'),
+          btnCloseStreaks: document.getElementById('btnCloseStreaks'),
+          streakDaysGrid: document.getElementById('streakDaysGrid'),
+          btnClaimDaily: document.getElementById('btnClaimDaily'),
+
+          modalQuests: document.getElementById('modalQuests'),
+          btnOpenQuests: document.getElementById('btnOpenQuests'),
+          btnCloseQuests: document.getElementById('btnCloseQuests'),
+          btnOkQuests: document.getElementById('btnOkQuests'),
+          questsContainer: document.getElementById('questsContainer'),
+
+          modalShop: document.getElementById('modalShop'),
+          btnOpenShop: document.getElementById('btnOpenShop'),
+          btnCloseShop: document.getElementById('btnCloseShop'),
+          shopStarBalance: document.getElementById('shopStarBalance'),
+          panelPets: document.getElementById('panelPets'),
+          panelSeasonal: document.getElementById('panelSeasonal'),
+          panelThemes: document.getElementById('panelThemes'),
+          panelPacks: document.getElementById('panelPacks'),
+          tabPets: document.getElementById('tabPets'),
+          tabSeasonal: document.getElementById('tabSeasonal'),
+          tabThemes: document.getElementById('tabThemes'),
+          tabPacks: document.getElementById('tabPacks'),
+
+          btnBuyPack100: document.getElementById('btnBuyPack100'),
+          btnBuyPack300: document.getElementById('btnBuyPack300'),
+          btnBuyPack1000: document.getElementById('btnBuyPack1000'),
+
+          modalCheckout: document.getElementById('modalCheckout'),
+          checkoutAmountText: document.getElementById('checkoutAmountText'),
+          btnPayPayPal: document.getElementById('btnPayPayPal'),
+          btnPayGoogle: document.getElementById('btnPayGoogle'),
+          btnPayApple: document.getElementById('btnPayApple'),
+          btnCancelCheckout: document.getElementById('btnCancelCheckout'),
+
+          modalHighscores: document.getElementById('modalHighscores'),
+          btnOpenHighscores: document.getElementById('btnOpenHighscores'),
+          btnCloseScores: document.getElementById('btnCloseScores'),
+          btnOkScores: document.getElementById('btnOkScores'),
+          scoresList: document.getElementById('scoresList')
+        };
+      }
+
+      bindEvents() {
+        const attach = (elem, handler) => {
+          if (!elem) return;
+          elem.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.sound.init();
+            handler(e);
+          });
+        };
+
+        attach(this.dom.soundToggle, () => {
+          const muted = this.sound.toggleMute();
+          this.dom.soundIcon.textContent = muted ? '🔕' : '🔔';
+        });
+
+        attach(this.dom.btnPlay, () => this.openWorldsModal());
+        attach(this.dom.btnCloseWorlds, () => this.closeModal(this.dom.modalWorlds));
+
+        attach(this.dom.btnOptionLeft, () => this.handleAnswer('left'));
+        attach(this.dom.btnOptionRight, () => this.handleAnswer('right'));
+
+        attach(this.dom.btnPauseGame, () => this.pauseGame());
+        attach(this.dom.btnResumeGame, () => this.resumeGame());
+        attach(this.dom.btnPauseExit, () => { this.saveCurrentMatch(); this.returnHome(); });
+        attach(this.dom.btnExitToHome, () => { this.saveCurrentMatch(); this.returnHome(); });
+
+        attach(this.dom.btnPlayAgain, () => {
+          this.closeModal(this.dom.modalGameOver);
+          this.startWorldGame(this.activeWorld);
+        });
+        attach(this.dom.btnGoHome, () => {
+          this.closeModal(this.dom.modalGameOver);
+          this.openWorldsModal();
+        });
+
+        attach(this.dom.btnOpenStreaks, () => this.openStreaksModal());
+        attach(this.dom.btnCloseStreaks, () => this.closeModal(this.dom.modalStreaks));
+        attach(this.dom.btnClaimDaily, () => this.claimDailyReward());
+
+        attach(this.dom.btnOpenQuests, () => this.openQuestsModal());
+        attach(this.dom.btnCloseQuests, () => this.closeModal(this.dom.modalQuests));
+        attach(this.dom.btnOkQuests, () => this.closeModal(this.dom.modalQuests));
+
+        attach(this.dom.btnOpenShop, () => this.openShopModal());
+        attach(this.dom.btnOpenBank, () => { this.openShopModal(); this.switchShopTab('packs'); });
+        attach(this.dom.btnCloseShop, () => this.closeModal(this.dom.modalShop));
+
+        attach(this.dom.tabPets, () => this.switchShopTab('pets'));
+        attach(this.dom.tabSeasonal, () => this.switchShopTab('seasonal'));
+        attach(this.dom.tabThemes, () => this.switchShopTab('themes'));
+        attach(this.dom.tabPacks, () => this.switchShopTab('packs'));
+
+        attach(this.dom.btnBuyPack100, () => this.openCheckout(120, '0,99 €', 'pack_120_stars'));
+        attach(this.dom.btnBuyPack300, () => this.openCheckout(350, '2,49 €', 'pack_350_stars'));
+        attach(this.dom.btnBuyPack1000, () => this.openCheckout(1000, '5,99 €', 'pack_1000_stars'));
+
+        attach(this.dom.btnOpenHighscores, () => this.openScoresModal());
+        attach(this.dom.btnCloseScores, () => this.closeModal(this.dom.modalHighscores));
+        attach(this.dom.btnOkScores, () => this.closeModal(this.dom.modalHighscores));
+
+        attach(this.dom.btnCancelCheckout, () => this.closeModal(this.dom.modalCheckout));
+        attach(this.dom.btnPayPayPal, () => this.processPayment('PayPal'));
+        attach(this.dom.btnPayGoogle, () => this.processPayment('Google Play'));
+        attach(this.dom.btnPayApple, () => this.processPayment('Apple Pay'));
+      }
+
+      openModal(el) { if (el) el.classList.add('is-open'); }
+      closeModal(el) { if (el) el.classList.remove('is-open'); }
+
+      refreshHomeStats() {
+        this.dom.menuTotalStars.textContent = this.totalStars;
+        this.dom.badgeStreakDays.textContent = `${this.streakDays}d`;
+        const claimable = this.quests.filter(q => q.progress >= q.goal && !q.claimed).length;
+        this.dom.badgeQuestsPending.textContent = claimable;
+        this.dom.cuteMathQuote.textContent = `"${CUTE_QUOTES[Math.floor(Math.random() * CUTE_QUOTES.length)]}"`;
+        this.updatePetCardFaces();
+      }
+
+      applyTheme(themeId) {
+        this.activeTheme = themeId;
+        this.dom.gameBody.className = `${themeId} bg-kawaii-pattern min-h-screen text-slate-700 flex flex-col justify-between relative`;
+      }
+
+      updatePetCardFaces() {
+        const petA = PET_CATALOG.find(p => p.id === this.activePetLeft) || PET_CATALOG[0];
+        const petB = PET_CATALOG.find(p => p.id === this.activePetRight) || PET_CATALOG[2];
+
+        this.dom.petNameLeft.textContent = petA.name;
+        this.dom.petAvatarLeft.innerHTML = this.getPetSVG(petA.id);
+
+        this.dom.petNameRight.textContent = petB.name;
+        this.dom.petAvatarRight.innerHTML = this.getPetSVG(petB.id);
+      }
+
+      getPetSVG(petId) {
+        switch(petId) {
+          case 'calamarmisterioso':
+            return `
+              <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-sm pointer-events-none">
+                <ellipse cx="50" cy="45" rx="32" ry="28" fill="#a855f7"/>
+                <circle cx="38" cy="42" r="5" fill="#ffffff"/>
+                <circle cx="39" cy="42" r="2" fill="#1e293b"/>
+                <circle cx="62" cy="42" r="5" fill="#ffffff"/>
+                <circle cx="61" cy="42" r="2" fill="#1e293b"/>
+                <path d="M30,68 Q35,55 40,68 Q45,55 50,68 Q55,55 60,68 Q65,55 70,68" stroke="#9333ea" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <circle cx="32" cy="52" r="4" fill="#e9d5ff" opacity="0.7"/>
+                <circle cx="68" cy="52" r="4" fill="#e9d5ff" opacity="0.7"/>
+              </svg>`;
+          case 'mochipup':
+            return `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-sm pointer-events-none"><ellipse cx="50" cy="55" rx="35" ry="30" fill="#fde68a"/><ellipse cx="22" cy="40" rx="9" ry="16" fill="#f59e0b"/><ellipse cx="78" cy="40" rx="9" ry="16" fill="#f59e0b"/><circle cx="38" cy="50" r="4.5" fill="#1e293b"/><circle cx="62" cy="50" r="4.5" fill="#1e293b"/><polygon points="47,56 53,56 50,60" fill="#ea580c"/></svg>`;
+          case 'mimikitty':
+            return `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-sm pointer-events-none"><ellipse cx="50" cy="56" rx="34" ry="28" fill="#fed7aa"/><polygon points="24,42 34,22 44,38" fill="#fb923c"/><polygon points="56,38 66,22 76,42" fill="#fb923c"/><circle cx="39" cy="52" r="4" fill="#1e293b"/><circle cx="61" cy="52" r="4" fill="#1e293b"/><polygon points="48,58 52,58 50,60" fill="#f43f5e"/></svg>`;
+          default:
+            return `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-sm pointer-events-none"><ellipse cx="50" cy="55" rx="35" ry="30" fill="#cbd5e1"/><circle cx="38" cy="50" r="4" fill="#1e293b"/><circle cx="62" cy="50" r="4" fill="#1e293b"/></svg>`;
+        }
+      }
+
+      openWorldsModal() {
+        this.dom.worldsListContainer.innerHTML = '';
+        WORLDS_CONFIG.forEach(w => {
+          const prog = this.worldProgress[w.id] || { level: 1, score: 0 };
+          const card = document.createElement('div');
+          card.className = 'border-2 border-pink-200 rounded-2xl p-3 bg-pink-50/40 hover:bg-pink-50 cursor-pointer transition flex items-center justify-between shadow-2xs mb-2';
+          card.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="text-3xl">${w.icon}</div>
+              <div>
+                <div class="text-sm font-black font-cute text-slate-800">${w.name}</div>
+                <div class="text-[11px] text-slate-500 font-semibold">${w.desc}</div>
+                <div class="text-xs font-bold text-pink-600 mt-1">Nivel: ${prog.level}/100 • Puntos: ${prog.score}</div>
+              </div>
+            </div>
+            <div class="text-pink-500 font-bold text-lg">▶</div>
+          `;
+          card.addEventListener('click', () => {
+            this.closeModal(this.dom.modalWorlds);
+            this.startWorldGame(w.id);
+          });
+          this.dom.worldsListContainer.appendChild(card);
+        });
+        this.openModal(this.dom.modalWorlds);
+      }
+
+      startWorldGame(worldId) {
+        this.activeWorld = worldId;
+        const prog = this.worldProgress[worldId] || { level: 1, score: 0 };
+        this.score = prog.score;
+        this.level = prog.level;
+        this.energy = 100;
+        this.matchStars = 0;
+        this.combo = 0;
+        this.isPaused = false;
+        this.launchGame();
+      }
+
+      launchGame() {
+        this.dom.screenMenu.classList.add('hidden');
+        this.dom.screenGame.classList.remove('hidden');
+        this.updatePetCardFaces();
+
+        const wObj = WORLDS_CONFIG.find(w => w.id === this.activeWorld);
+        if (wObj) {
+          this.dom.hudWorldIcon.textContent = wObj.icon;
+          this.dom.hudWorldName.textContent = wObj.name.split(':')[0];
+        }
+
+        this.sound.startMusic(this.level);
+        this.nextQuestion();
+        this.startTimeLoop();
+        this.updateHUD();
+      }
+
+      saveCurrentMatch() {
+        if (this.worldProgress[this.activeWorld]) {
+          this.worldProgress[this.activeWorld].level = this.level;
+          this.worldProgress[this.activeWorld].score = this.score;
+          this.saveStorage();
+        }
+      }
+
+      returnHome() {
+        this.stopTimeLoop();
+        this.sound.stopMusic();
+        this.closeModal(this.dom.modalPause);
+        this.dom.screenGame.classList.add('hidden');
+        this.dom.screenMenu.classList.remove('hidden');
+        this.refreshHomeStats();
+      }
+
+      getDrainPerSec() { return 2.8 * Math.pow(1.15, (this.level - 1) / 10); }
+
+      startTimeLoop() {
+        this.stopTimeLoop();
+        this.lastTime = performance.now();
+        const frame = (time) => {
+          if (!this.isPaused && this.energy > 0) {
+            const dt = (time - this.lastTime) / 1000;
+            this.lastTime = time;
+            this.energy = Math.max(0, this.energy - this.getDrainPerSec() * dt);
+            this.updateHUD();
+            if (this.energy <= 0) { this.handleGameOver(); return; }
+          } else { this.lastTime = time; }
+          this.animLoopId = requestAnimationFrame(frame);
+        };
+        this.animLoopId = requestAnimationFrame(frame);
+      }
+
+      stopTimeLoop() {
+        if (this.animLoopId) { cancelAnimationFrame(this.animLoopId); this.animLoopId = null; }
+      }
+
+      pauseGame() {
+        this.isPaused = true;
+        this.sound.stopMusic();
+        this.openModal(this.dom.modalPause);
+      }
+
+      resumeGame() {
+        this.isPaused = false;
+        this.lastTime = performance.now();
+        this.sound.startMusic(this.level);
+        this.closeModal(this.dom.modalPause);
+      }
+
+      nextQuestion() {
+        this.currentChallenge = MathGenerator.getChallenge(this.activeWorld, this.level);
+        this.dom.hudQuestionText.textContent = this.currentChallenge.text;
+        this.dom.labelOptionLeft.textContent = this.currentChallenge.a;
+        this.dom.labelOptionRight.textContent = this.currentChallenge.b;
+        this.dom.hudRangeLabel.textContent = this.currentChallenge.rangeLabel;
+
+        if (this.currentChallenge.isSpecialStarQuestion) {
+          this.dom.starRewardBadge.classList.remove('hidden');
+          this.dom.questionContainer.classList.add('golden-aura');
+        } else {
+          this.dom.starRewardBadge.classList.add('hidden');
+          this.dom.questionContainer.classList.remove('golden-aura');
+        }
+      }
+
+      handleAnswer(side) {
+        if (this.isPaused || this.energy <= 0) return;
+        const isOk = (side === this.currentChallenge.correct);
+
+        if (isOk) {
+          this.sound.playSuccess();
+          this.triggerFlash(true);
+          this.combo++;
+          const pts = 100 + (this.level * 15) + (this.combo * 5);
+          this.score += pts;
+          this.energy = Math.min(100, this.energy + 9);
+          this.showFloatingEffect(`+${pts}`, 'text-emerald-500');
+          this.trackQuestProgress('q1', 1);
+
+          if (this.currentChallenge.isSpecialStarQuestion) this.awardStar(1, '⭐ ¡Pregunta Especial!');
+          if (this.combo === 3) this.awardStar(1, '⭐ ¡Racha 3!');
+          else if (this.combo === 5) { this.awardStar(2, '⭐ ¡Racha 5!'); this.trackQuestProgress('q2', 5); }
+
+          this.checkProgression();
+        } else {
+          this.sound.playError();
+          this.triggerFlash(false);
+          this.combo = 0;
+          this.energy = Math.max(0, this.energy - 25);
+          this.score = Math.max(0, this.score - 25);
+          this.showFloatingEffect(`-25`, 'text-rose-500');
+        }
+
+        this.saveCurrentMatch();
+        this.updateHUD();
+        if (this.energy <= 0) this.handleGameOver();
+        else this.nextQuestion();
+      }
+
+      awardStar(count, msg) {
+        this.matchStars += count;
+        this.totalStars += count;
+        this.sound.playStarChime();
+        this.showFloatingEffect(msg, 'text-amber-500');
+        this.saveStorage();
+      }
+
+      checkProgression() {
+        const nextLvl = Math.min(100, Math.floor(this.score / 450) + 1);
+        if (nextLvl > this.level) {
+          this.level = nextLvl;
+          this.sound.playLevelUp();
+          this.sound.startMusic(this.level);
+          this.triggerLevelToast(this.level);
+          this.trackQuestProgress('q3', this.level);
+          this.saveCurrentMatch();
+        }
+      }
+
+      triggerLevelToast(lvl) {
+        this.dom.toastLevelText.textContent = `Nivel ${lvl}/100`;
+        this.dom.toastLevelUp.classList.remove('hidden');
+        this.dom.toastLevelUp.classList.add('level-toast');
+        setTimeout(() => {
+          this.dom.toastLevelUp.classList.remove('level-toast');
+          this.dom.toastLevelUp.classList.add('hidden');
+        }, 2200);
+      }
+
+      triggerFlash(win) {
+        const col = win ? 'rgba(52, 211, 153, 0.22)' : 'rgba(244, 63, 94, 0.22)';
+        this.dom.flashOverlay.style.backgroundColor = col;
+        setTimeout(() => { this.dom.flashOverlay.style.backgroundColor = 'transparent'; }, 220);
+      }
+
+      showFloatingEffect(txt, col) {
+        const el = document.createElement('div');
+        el.className = `star-float font-black font-cute text-sm ${col}`;
+        el.textContent = txt;
+        this.dom.floatPointBox.appendChild(el);
+        setTimeout(() => el.remove(), 850);
+      }
+
+      updateHUD() {
+        this.dom.hudScore.textContent = this.score;
+        this.dom.hudLevel.textContent = `Lvl ${this.level}/100`;
+        this.dom.hudMatchStars.textContent = this.matchStars;
+        this.dom.hudComboText.textContent = `Combo: ${this.combo}`;
+        const pct = Math.max(0, Math.min(100, this.energy));
+        this.dom.hudEnergyBar.style.width = `${pct}%`;
+        if (pct < 25) {
+          this.dom.hudEnergyBar.className = "h-full bg-gradient-to-r from-rose-500 to-red-400 rounded-full transition-all duration-75 pulse-danger";
+        } else {
+          this.dom.hudEnergyBar.className = "h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 rounded-full transition-all duration-75 ease-linear";
+        }
+      }
+
+      handleGameOver() {
+        this.stopTimeLoop();
+        this.sound.stopMusic();
+        this.saveCurrentMatch();
+
+        this.dom.goScore.textContent = this.score;
+        this.dom.goLevel.textContent = `${this.level}/100`;
+        this.dom.goStars.textContent = `+${this.matchStars} ⭐`;
+
+        this.saveHighScore(this.score, this.level);
+        this.openModal(this.dom.modalGameOver);
+      }
+
+      saveHighScore(score, level) {
+        if (score <= 0) return;
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('mmp_scores') || '[]'); } catch(e) {}
+        list.push({ score, level, date: new Date().toLocaleDateString('es-ES') });
+        list.sort((a,b) => b.score - a.score);
+        list = list.slice(0, 5);
+        try { localStorage.setItem('mmp_scores', JSON.stringify(list)); } catch(e) {}
+      }
+
+      openStreaksModal() {
+        this.renderStreakCalendar();
+        this.openModal(this.dom.modalStreaks);
+      }
+
+      renderStreakCalendar() {
+        const todayStr = new Date().toDateString();
+        const canClaim = (this.lastClaimDate !== todayStr);
+        this.dom.streakDaysGrid.innerHTML = '';
+        const rewards = [5, 5, 10, 10, 15, 20, 30];
+
+        for (let i = 1; i <= 7; i++) {
+          const isPassed = i < this.streakDays;
+          const isCurrent = i === this.streakDays;
+          const card = document.createElement('div');
+          card.className = `p-2 rounded-2xl border-2 text-center text-xs flex flex-col items-center justify-between min-h-[70px] ${isCurrent ? 'bg-rose-50 border-rose-400 font-extrabold' : (isPassed ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-400')}`;
+          card.innerHTML = `<div class="text-[9px] uppercase font-bold">Día ${i}</div><div class="text-sm font-black font-cute">+${rewards[i-1]}</div><div class="text-xs">${isPassed ? '✅' : (isCurrent ? '⭐' : '🔒')}</div>`;
+          this.dom.streakDaysGrid.appendChild(card);
+        }
+        this.dom.btnClaimDaily.disabled = !canClaim;
+        this.dom.btnClaimDaily.textContent = canClaim ? "Reclamar Recompensa de Hoy" : "¡Reclamado por hoy!";
+      }
+
+      claimDailyReward() {
+        const todayStr = new Date().toDateString();
+        if (this.lastClaimDate === todayStr) return;
+        const rewards = [5, 5, 10, 10, 15, 20, 30];
+        const dayIdx = ((this.streakDays - 1) % 7);
+        this.totalStars += rewards[dayIdx];
+        this.lastClaimDate = todayStr;
+        this.streakDays = (this.streakDays >= 7) ? 1 : this.streakDays + 1;
+        this.saveStorage();
+        this.sound.playStarChime();
+        this.renderStreakCalendar();
+        this.refreshHomeStats();
+      }
+
+      openQuestsModal() { this.renderQuests(); this.openModal(this.dom.modalQuests); }
+
+      trackQuestProgress(questId, amount) {
+        const q = this.quests.find(item => item.id === questId);
+        if (q && !q.claimed) {
+          q.progress = questId === 'q3' ? Math.max(q.progress, amount) : Math.min(q.goal, q.progress + amount);
+          this.saveStorage();
+          this.refreshHomeStats();
+        }
+      }
+
+      renderQuests() {
+        this.dom.questsContainer.innerHTML = '';
+        this.quests.forEach(q => {
+          const isDone = q.progress >= q.goal;
+          const div = document.createElement('div');
+          div.className = 'border-2 border-sky-100 rounded-2xl p-2.5 bg-sky-50/50 flex items-center justify-between text-left';
+          div.innerHTML = `<div><div class="text-xs font-bold text-slate-700">${q.text}</div><div class="text-[10px] text-slate-400">${q.progress}/${q.goal}</div></div><div>${q.claimed ? '<span class="text-xs font-bold text-emerald-600">Reclamado</span>' : (isDone ? `<button data-quest-id="${q.id}" class="btn-claim-quest bg-amber-400 text-white font-cute text-xs px-3 py-1.5 rounded-xl">+${q.reward} ⭐</button>` : `<span class="text-xs text-slate-400">+${q.reward} ⭐</span>`)}</div>`;
+          this.dom.questsContainer.appendChild(div);
+        });
+        this.dom.questsContainer.querySelectorAll('.btn-claim-quest').forEach(btn => {
+          btn.addEventListener('click', (e) => { this.claimQuest(e.currentTarget.getAttribute('data-quest-id')); });
+        });
+      }
+
+      claimQuest(questId) {
+        const q = this.quests.find(item => item.id === questId);
+        if (q && !q.claimed && q.progress >= q.goal) {
+          q.claimed = true; this.totalStars += q.reward;
+          this.saveStorage(); this.sound.playStarChime();
+          this.renderQuests(); this.refreshHomeStats();
+        }
+      }
+
+      openShopModal() { this.dom.shopStarBalance.textContent = this.totalStars; this.renderShopContent(); this.openModal(this.dom.modalShop); }
+
+      switchShopTab(tab) {
+        ['panelPets', 'panelSeasonal', 'panelThemes', 'panelPacks'].forEach(p => this.dom[p].classList.add('hidden'));
+        if (tab === 'pets') this.dom.panelPets.classList.remove('hidden');
+        else if (tab === 'seasonal') this.dom.panelSeasonal.classList.remove('hidden');
+        else if (tab === 'themes') this.dom.panelThemes.classList.remove('hidden');
+        else this.dom.panelPacks.classList.remove('hidden');
+      }
+
+      renderShopContent() {
+        const renderList = (container, list) => {
+          container.innerHTML = '';
+          list.forEach(pet => {
+            const isUnlocked = this.unlockedPets.includes(pet.id);
+            const isLeft = (this.activePetLeft === pet.id);
+            const isRight = (this.activePetRight === pet.id);
+            const card = document.createElement('div');
+            card.className = `border-2 border-pink-100 bg-white rounded-2xl p-2.5 text-center flex flex-col items-center justify-between relative`;
+            card.innerHTML = `${pet.badge ? `<span class="absolute top-1 left-1 bg-purple-500 text-white text-[9px] px-1.5 py-0.5 rounded-md">${pet.badge}</span>` : ''}<div class="text-3xl mt-1">${pet.icon}</div><div class="text-xs font-black font-pet-name text-slate-800">${pet.name}</div><div class="mt-2 w-full">${isUnlocked ? `<div class="grid grid-cols-2 gap-1"><button data-pet-left="${pet.id}" class="text-[10px] py-1 rounded-lg font-bold ${isLeft ? 'bg-pink-500 text-white' : 'bg-slate-100 text-slate-600'}">Izq</button><button data-pet-right="${pet.id}" class="text-[10px] py-1 rounded-lg font-bold ${isRight ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-600'}">Der</button></div>` : `<button data-buy-pet="${pet.id}" data-price="${pet.price}" class="w-full py-1.5 bg-amber-400 text-white font-cute font-bold text-xs rounded-xl">${pet.price} ⭐</button>`}</div>`;
+            container.appendChild(card);
+          });
+        };
+        renderList(this.dom.panelPets, PET_CATALOG);
+
+        this.dom.panelPets.querySelectorAll('[data-pet-left]').forEach(b => b.addEventListener('click', (e) => this.equipPet(e.currentTarget.getAttribute('data-pet-left'), 'left')));
+        this.dom.panelPets.querySelectorAll('[data-pet-right]').forEach(b => b.addEventListener('click', (e) => this.equipPet(e.currentTarget.getAttribute('data-pet-right'), 'right')));
+        this.dom.panelPets.querySelectorAll('[data-buy-pet]').forEach(b => b.addEventListener('click', (e) => this.buyPet(e.currentTarget.getAttribute('data-buy-pet'), parseInt(e.currentTarget.getAttribute('data-price')))));
+
+        // Paletas de Temas
+        this.dom.panelThemes.innerHTML = '';
+        THEME_CATALOG.forEach(th => {
+          const isUnlocked = this.unlockedThemes.includes(th.id);
+          const isActive = (this.activeTheme === th.id);
+          const card = document.createElement('div');
+          card.className = 'border-2 border-slate-100 rounded-2xl p-2.5 bg-white text-center flex flex-col items-center justify-between';
+          card.innerHTML = `<div class="w-8 h-8 rounded-full mb-1 shadow-xs border-2 border-white mx-auto" style="background:${th.color}"></div><div class="text-xs font-black font-cute text-slate-700">${th.name}</div><div class="mt-2 w-full">${isUnlocked ? `<button data-theme-equip="${th.id}" class="w-full py-1 text-xs rounded-xl font-bold ${isActive ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600'}">${isActive ? 'Activo' : 'Usar'}</button>` : `<button data-theme-buy="${th.id}" data-price="${th.price}" class="w-full py-1.5 bg-amber-400 text-white font-cute font-bold text-xs rounded-xl">${th.price} ⭐</button>`}</div>`;
+          this.dom.panelThemes.appendChild(card);
+        });
+
+        this.dom.panelThemes.querySelectorAll('[data-theme-equip]').forEach(b => b.addEventListener('click', (e) => this.equipTheme(e.currentTarget.getAttribute('data-theme-equip'))));
+        this.dom.panelThemes.querySelectorAll('[data-theme-buy]').forEach(b => b.addEventListener('click', (e) => this.buyTheme(e.currentTarget.getAttribute('data-theme-buy'), parseInt(e.currentTarget.getAttribute('data-price')))));
+      }
+
+      buyPet(petId, price) {
+        if (this.totalStars >= price) {
+          this.totalStars -= price; this.unlockedPets.push(petId);
+          this.saveStorage(); this.sound.playStarChime();
+          this.dom.shopStarBalance.textContent = this.totalStars;
+          this.renderShopContent(); this.refreshHomeStats();
+        } else { this.switchShopTab('packs'); }
+      }
+
+      equipPet(petId, side) {
+        if (side === 'left') this.activePetLeft = petId;
+        if (side === 'right') this.activePetRight = petId;
+        this.saveStorage(); this.renderShopContent(); this.updatePetCardFaces();
+      }
+
+      buyTheme(themeId, price) {
+        if (this.totalStars >= price) {
+          this.totalStars -= price; this.unlockedThemes.push(themeId);
+          this.applyTheme(themeId); this.saveStorage(); this.sound.playStarChime();
+          this.dom.shopStarBalance.textContent = this.totalStars;
+          this.renderShopContent();
+        } else { this.switchShopTab('packs'); }
+      }
+
+      equipTheme(themeId) {
+        this.applyTheme(themeId);
+        this.saveStorage();
+        this.renderShopContent();
+      }
+
+      openCheckout(stars, price, sku) {
+        this.checkoutData = { stars, price, sku };
+        this.dom.checkoutAmountText.textContent = `${price} (Por ${stars} ⭐)`;
+        this.openModal(this.dom.modalCheckout);
+      }
+
+      async processPayment(platformKey) {
+        if (!this.checkoutData) return;
+        const { stars, price, sku } = this.checkoutData;
+        this.closeModal(this.dom.modalCheckout);
+        await new Promise(r => setTimeout(r, 400));
+        this.totalStars += stars;
+        this.saveStorage();
+        this.sound.playStarChime();
+        this.refreshHomeStats();
+        this.dom.shopStarBalance.textContent = this.totalStars;
+      }
+
+      openScoresModal() {
+        let scores = [];
+        try { scores = JSON.parse(localStorage.getItem('mmp_scores') || '[]'); } catch(e) {}
+        this.dom.scoresList.innerHTML = scores.length === 0 ? '<div class="text-xs text-slate-400 py-4">No hay récords todavía.</div>' : '';
+        scores.forEach((s, idx) => {
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between p-2 rounded-xl border border-purple-100 bg-purple-50/50 text-xs font-bold';
+          row.innerHTML = `<span>#${idx + 1} - ${s.score} pts (Lvl ${s.level})</span><span class="text-slate-400">${s.date}</span>`;
+          this.dom.scoresList.appendChild(row);
+        });
+        this.openModal(this.dom.modalHighscores);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      window.game = new MochiPetsGame();
+    });
+  </script>
+</body>
+</html>
