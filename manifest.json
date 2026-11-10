@@ -15,6 +15,13 @@
   "theme_color": "#7c3aed",
   "lang": "es",
   "dir": "ltr",
+    "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "970x1920",
+      "type": "image/png"
+    }
+  ],
   "prefer_related_applications": false,
    "related_applications": [
     {
