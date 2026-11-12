@@ -1,109 +1,86 @@
-// Service Worker optimizado para Math Mochi Pets (Soporte Offline, Sync y Push)
-const CACHE = "math-mochi-pets-cache-v1";
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox-sw.js');
+// Service Worker optimizado para Math Mochi Pets (Soporte Offline y Push)
+const CACHE_NAME = "math-mochi-pets-cache-v2";
+const ASSETS_TO_CACHE = [
+  "./index.html",
+  "./manifest.json",
+  "./icon-512.png"
+];
 
-// Página de respaldo offline
-const offlineFallbackPage = "./index.html";
+// Instalación: Guardar recursos esenciales en caché
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+  self.skipWaiting();
+});
 
-// Forzar activación inmediata de nuevas versiones
+// Activación: Limpiar cachés antiguas y tomar control
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Forzar activación inmediata si se solicita
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
 
-// Instalación y almacenamiento en caché de los recursos esenciales
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => {
-      return cache.addAll([
-        offlineFallbackPage,
-        "./manifest.json",
-        "./icon-512.png"
-      ]);
-    })
-  );
-  self.skipWaiting();
-});
-
-// Activación y limpieza de cachés antiguas
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// Activar navegación prediseñada si el navegador la soporta
-if (workbox.navigationPreload.isSupported()) {
-  workbox.navigationPreload.enable();
-}
-
-// Estrategia de caché general con Workbox
-workbox.routing.registerRoute(
-  new RegExp('/*'),
-  new workbox.strategies.StaleWhileRevalidate({ cacheName: CACHE })
-);
-
-// Gestión unificada de solicitudes de red y soporte offline completo reconocido por analizadores
-self.addEventListener('fetch', (event) => {
-  // Ignorar peticiones que no sean GET (como las escrituras en Firebase/Firestore)
-  if (event.request.method !== 'GET') return;
+// Soporte Offline Real (Detectado por PWABuilder)
+self.addEventListener("fetch", (event) => {
+  // Solo procesar peticiones GET (ignorar escrituras de Firebase/Firestore)
+  if (event.request.method !== "GET") return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
+      // Si está en caché, lo devuelve y actualiza en segundo plano
       if (cachedResponse) {
-        // Devolver caché y actualizar en segundo plano
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE).then((cache) => cache.put(event.request, networkResponse));
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, networkResponse);
+            });
           }
         }).catch(() => {});
         return cachedResponse;
       }
 
-      return fetch(event.request).then((networkResponse) => {
-        return networkResponse;
-      }).catch(() => {
-        // Si falla la red en una navegación, devolver la página offline/index
-        if (event.request.mode === 'navigate') {
-          return caches.match(offlineFallbackPage);
-        }
-      });
+      // Si no está en caché, intenta buscarlo en la red
+      return fetch(event.request)
+        .then((networkResponse) => {
+          return networkResponse;
+        })
+        .catch(() => {
+          // Si falla la red (offline), devuelve el index.html como respaldo universal
+          return caches.match("./index.html");
+        });
     })
   );
 });
 
 // ==========================================
-// MÓDULOS ADICIONALES PARA LAS OPCIONES AVANZADAS
+// MÓDULOS ADICIONALES (Sync y Push)
 // ==========================================
 
-// 1. Background Sync (Sincronización en segundo plano)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-math-data') {
-    event.waitUntil(
-      console.log('Sincronizando datos pendientes en segundo plano...')
-    );
+    event.waitUntil(console.log('Sincronizando datos pendientes...'));
   }
 });
 
-// 2. Periodic Sync (Sincronización periódica)
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'daily-math-update') {
-    event.waitUntil(
-      console.log('Ejecutando sincronización periódica...')
-    );
-  }
-});
-
-// 3. Push Notifications (Notificaciones Push)
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "Math Mochi Pets";
